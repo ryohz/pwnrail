@@ -8,8 +8,8 @@ pub enum Error {
     IoError(#[from] io::Error),
     #[error("`{0}` already exists.")]
     AlreadyExists(String),
-    #[error("before initialization of this application.")]
-    BeforeInit,
+    #[error("before initialization of this environment.")]
+    BeforeInitEnv,
     #[error("home directory is not found")]
     NoHomeDir,
     #[error("rjql error. `{0}`")]

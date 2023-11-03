@@ -41,17 +41,7 @@ pub mod envinfo {
         if fs::metadata(&gconfig_dir_path).is_err() {
             fs::create_dir_all(&gconfig_dir_path)?;
         }
-        let mut current_ws_mgr_buf =
-            io::BufWriter::new(match fs::File::open(&current_ws_mgr_path) {
-                Ok(f) => f,
-                Err(e) => {
-                    if e.kind() == io::ErrorKind::NotFound {
-                        fs::File::create(&current_ws_mgr_path)?
-                    } else {
-                        return Err(Error::IoError(e));
-                    }
-                }
-            });
+        let mut current_ws_mgr_buf = io::BufWriter::new(fs::File::create(&current_ws_mgr_path)?);
         let base_path_str = base_path.to_str().unwrap();
         let _ = current_ws_mgr_buf.write(base_path_str.as_bytes())?;
         // history
@@ -91,7 +81,7 @@ pub mod envinfo {
             Ok(f) => f,
             Err(e) => {
                 if e.kind() == io::ErrorKind::NotFound {
-                    return Err(Error::BeforeInit);
+                    return Err(Error::BeforeInitEnv);
                 }
                 return Err(Error::IoError(e));
             }
@@ -112,7 +102,7 @@ pub mod envinfo {
             Ok(f) => Ok(f),
             Err(e) => {
                 if e.kind() == io::ErrorKind::NotFound {
-                    Err(Error::BeforeInit)
+                    Err(Error::BeforeInitEnv)
                 } else {
                     Err(Error::IoError(e))
                 }
@@ -123,11 +113,11 @@ pub mod envinfo {
     pub fn vars_file_read() -> Result<File, Error> {
         let base_path = current_ws_path()?;
         let path = base_path.join(VARS_FILE_NAME);
-        match File::open(path) {
+        match File::open(&path) {
             Ok(f) => Ok(f),
             Err(e) => {
                 if e.kind() == io::ErrorKind::NotFound {
-                    Err(Error::BeforeInit)
+                    Err(Error::BeforeInitEnv)
                 } else {
                     Err(Error::IoError(e))
                 }
