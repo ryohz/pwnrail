@@ -5,6 +5,7 @@ mod util;
 // use std::{fs, io, path::PathBuf};
 
 use clap::{Args, Parser, Subcommand};
+use rskai::console::output;
 
 // console
 // |- init initialize env. create .<projectname> directory.
@@ -30,6 +31,13 @@ enum SubCommands {
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
+
+    match util::envinfo::ginit() {
+        Ok(_) => (),
+        Err(e) => {
+            output::errorln!("failed to init application: {}", e.to_string());
+        }
+    }
 
     match cli.subcommand {
         SubCommands::Console(_args) => {

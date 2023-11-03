@@ -139,6 +139,21 @@ pub mod envinfo {
         let path = gconfig_dir_path()?;
         Ok(path.join(HISTORY_FILE_NAME))
     }
+
+    pub fn ginit() -> Result<(), Error> {
+        // history
+        let history_path = history_file_path()?;
+        let _ = match fs::metadata(&history_path) {
+            Ok(_) => (),
+            Err(e) => {
+                if e.kind() == io::ErrorKind::NotFound {
+                    fs::File::create(&history_path)?;
+                }
+                return Err(Error::IoError(e));
+            }
+        };
+        Ok(())
+    }
 }
 
 pub mod clipboard {
