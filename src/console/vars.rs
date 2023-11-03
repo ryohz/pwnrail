@@ -1,10 +1,10 @@
-use std::io::{self, BufRead, Read, Write};
+use std::io::{self, Read, Write};
 
 use crate::util;
 
 use super::error::Error;
 use clap::error::ErrorKind as ClapErrorKind;
-use clap::{Args, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use rskai::console::output;
 
 #[derive(Parser, Debug)]
@@ -73,9 +73,6 @@ pub fn vars(argument: String) -> rskai::types::IsError {
                 return true;
             }
         },
-        _ => {
-            return true;
-        }
     }
 }
 

@@ -11,6 +11,7 @@ pub mod envinfo {
     pub const CURRENT_WORKSPACE_FILE: &str = "current";
     pub const ENV_DIR_NAME: &str = ".ptv";
     pub const VARS_FILE_NAME: &str = "vars.json";
+    pub const HISTORY_FILE_NAME: &str = "history";
 
     // this func initializes current directory
     // it does it directory, so the other functions have to handle
@@ -53,6 +54,17 @@ pub mod envinfo {
             });
         let base_path_str = base_path.to_str().unwrap();
         let _ = current_ws_mgr_buf.write(base_path_str.as_bytes())?;
+        // history
+        let history_path = history_file_path()?;
+        let _ = match fs::metadata(&history_path) {
+            Ok(_) => (),
+            Err(e) => {
+                if e.kind() == io::ErrorKind::NotFound {
+                    fs::File::create(&history_path)?;
+                }
+                return Err(Error::IoError(e));
+            }
+        };
         Ok(())
     }
 
@@ -121,6 +133,11 @@ pub mod envinfo {
                 }
             }
         }
+    }
+
+    pub fn history_file_path() -> Result<PathBuf, Error> {
+        let path = gconfig_dir_path()?;
+        Ok(path.join(HISTORY_FILE_NAME))
     }
 }
 

@@ -32,7 +32,7 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.subcommand {
-        SubCommands::Console(args) => {
+        SubCommands::Console(_args) => {
             console::console::start().await;
         }
     }
