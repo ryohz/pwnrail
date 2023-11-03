@@ -64,7 +64,6 @@ async fn main() {
                 Some(a) => a.join(" "),
                 None => "".to_string(),
             };
-            println!("debug: {}", command_args);
             for command in commands {
                 if command.name == command_name.to_owned() {
                     let func = command.func;
