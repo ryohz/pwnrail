@@ -4,6 +4,8 @@ mod util;
 
 // use std::{fs, io, path::PathBuf};
 
+use std::env;
+
 use clap::{Args, Parser, Subcommand};
 use rskai::console::output;
 
@@ -26,6 +28,7 @@ struct ConsoleArgs {}
 #[derive(Subcommand, Debug)]
 enum SubCommands {
     Console(ConsoleArgs),
+    Run,
 }
 
 #[tokio::main]
@@ -42,6 +45,27 @@ async fn main() {
     match cli.subcommand {
         SubCommands::Console(_args) => {
             console::console::start().await;
+        }
+        SubCommands::Run => {
+            let commands = crate::console::console::commands();
+            let args: Vec<String> = env::args().collect();
+            if args.len() < 3 {
+                output::errorln!("no command is given.");
+                return;
+            }
+            let args = args.get(2..args.len() - 1).unwrap();
+            let given_command_name = args.get(0).unwrap();
+            let given_args = match args.len() {
+                1 => "".to_string(),
+                _ => args.get(1..args.len() - 1).unwrap().join(" "),
+            };
+            for command in commands {
+                if command.name == given_command_name.to_owned() {
+                    let func = command.func;
+                    func(given_args);
+                    return;
+                }
+            }
         }
     }
 }

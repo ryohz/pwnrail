@@ -11,21 +11,29 @@ use crate::error::Error;
 // |- v store variable (for example ip, hosts, subdomain...) as json.
 // |- t run specified tool like nmap, rustscan, gobuster and etc.
 
-pub async fn start() {
-    let commands: Vec<rskai::command::Command> = vec![
+pub fn commands() -> Vec<rskai::command::Command> {
+    vec![
         // rskai::command::Command::new("t", Box::new(super::tool::tool)),
         rskai::command::Command::new("v", Box::new(super::vars::vars)),
         rskai::command::Command::new("init", Box::new(init)),
         rskai::command::Command::new("clean", Box::new(clean)),
-    ];
+    ]
+}
+
+pub async fn start() {
     let history_path = match super::util::envinfo::history_file_path() {
         Ok(p) => p,
         Err(e) => {
             output::errorln!("failed to find history file: {}", e.to_string());
-            return ;
+            return;
         }
     };
-    let mut prompt = rskai::prompt::Prompt::new(Some(commands), Some("(pentenv) $ "), Some(""),history_path);
+    let mut prompt = rskai::prompt::Prompt::new(
+        Some(commands()),
+        Some("(pentenv) $ "),
+        Some(""),
+        history_path,
+    );
 
     prompt.start().await;
 }
@@ -71,4 +79,3 @@ fn clean(_: String) -> rskai::types::IsError {
         }
     }
 }
-
