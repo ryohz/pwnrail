@@ -141,13 +141,39 @@ pub mod envinfo {
     }
 
     pub fn ginit() -> Result<(), Error> {
+        // config dir
+        let gconfig_path = gconfig_dir_path()?;
+        create_dir_if_not_exist(&gconfig_path)?;
+        // current workspace manager
+        let current_ws_mgr_path = current_ws_mgr_path()?;
+        create_file_if_not_exist(&current_ws_mgr_path)?;
         // history
         let history_path = history_file_path()?;
-        let _ = match fs::metadata(&history_path) {
+        create_file_if_not_exist(&history_path)?;
+        Ok(())
+    }
+
+    fn create_file_if_not_exist(path: &PathBuf) -> Result<(), Error> {
+        let _ = match fs::metadata(path) {
             Ok(_) => (),
             Err(e) => {
                 if e.kind() == io::ErrorKind::NotFound {
-                    fs::File::create(&history_path)?;
+                    fs::File::create(path)?;
+                    return Ok(());
+                }
+                return Err(Error::IoError(e));
+            }
+        };
+        Ok(())
+    }
+
+    fn create_dir_if_not_exist(path: &PathBuf) -> Result<(), Error> {
+        let _ = match fs::metadata(path) {
+            Ok(_) => (),
+            Err(e) => {
+                if e.kind() == io::ErrorKind::NotFound {
+                    fs::create_dir(path)?;
+                    return Ok(());
                 }
                 return Err(Error::IoError(e));
             }

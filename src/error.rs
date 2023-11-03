@@ -4,7 +4,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("io error.")]
+    #[error("io error: `{0}`")]
     IoError(#[from] io::Error),
     #[error("`{0}` already exists.")]
     AlreadyExists(String),
