@@ -1,5 +1,5 @@
 use rskai::console::output;
-use std::fs;
+use std::{env, fs, io};
 
 use crate::error::Error;
 
@@ -16,6 +16,7 @@ pub fn commands() -> Vec<rskai::command::Command> {
         // rskai::command::Command::new("t", Box::new(super::tool::tool)),
         rskai::command::Command::new("v", Box::new(super::vars::vars)),
         rskai::command::Command::new("init", Box::new(init)),
+        rskai::command::Command::new("use", Box::new(use_)),
         rskai::command::Command::new("clean", Box::new(clean)),
     ]
 }
@@ -78,4 +79,22 @@ fn clean(_: String) -> rskai::types::IsError {
             true
         }
     }
+}
+
+fn use_(_arg: String) -> rskai::types::IsError {
+    // does .ptv exists? -no-> error
+    let current_path = match env::current_dir() {
+        Ok(path) => path,
+        Err(e) => {
+            println!("failed to get current dir: {}", e.to_string());
+            return true;
+        }
+    };
+    let _ = match super::util::envinfo::update_current_ws(&current_path) {
+        Ok(_) => (),
+        Err(e) => {
+            println!("failed to update current workspace: {}", e.to_string());
+        }
+    };
+    false
 }

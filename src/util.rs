@@ -41,9 +41,7 @@ pub mod envinfo {
         if fs::metadata(&gconfig_dir_path).is_err() {
             fs::create_dir_all(&gconfig_dir_path)?;
         }
-        let mut current_ws_mgr_buf = io::BufWriter::new(fs::File::create(&current_ws_mgr_path)?);
-        let base_path_str = base_path.to_str().unwrap();
-        let _ = current_ws_mgr_buf.write(base_path_str.as_bytes())?;
+        update_current_ws(&base_path);
         // history
         let history_path = history_file_path()?;
         let _ = match fs::metadata(&history_path) {
@@ -93,6 +91,16 @@ pub mod envinfo {
         };
         current_path_string = current_path_string.replace('\n', "");
         Ok(PathBuf::from(current_path_string))
+    }
+
+    pub fn update_current_ws(path: &PathBuf) -> Result<(), Error> {
+        let next_path = path.join(ENV_DIR_NAME);
+        let _ = fs::metadata(&next_path)?;
+        let _ = fs::metadata(current_ws_mgr_path()?)?;
+        let mgr = fs::File::create(current_ws_mgr_path()?)?;
+        let mut writer = io::BufWriter::new(mgr);
+        writer.write(&next_path.to_str().unwrap().as_bytes())?;
+        Ok(())
     }
 
     pub fn vars_file_write() -> Result<File, Error> {

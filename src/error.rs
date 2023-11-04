@@ -15,7 +15,7 @@ pub enum Error {
     #[error("rjql error. `{0}`")]
     RjqlERror(#[from] rjql::error::Error),
     #[error("falied to copy the text to clipboard: `{0}`")]
-    CopyToClipboardError(String)
+    CopyToClipboardError(String),
 }
 
 #[derive(Error, Debug)]
