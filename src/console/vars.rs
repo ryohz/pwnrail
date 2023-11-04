@@ -96,7 +96,7 @@ fn refer(args: &RefArgs) -> Result<(), Error> {
             _ => return Err(Error::RjqlERror(e)),
         },
     };
-    output::println!("{}", result);
+    println!("{}", result);
     if args.copy {
         util::clipboard::copy(&result)?;
         output::println!("above value is copied to your clipboard!");
