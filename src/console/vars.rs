@@ -96,7 +96,6 @@ fn refer(args: &RefArgs) -> Result<(), Error> {
             _ => return Err(Error::RjqlERror(e)),
         },
     };
-    let result = result.get(1..result.len() - 1).unwrap().to_string();
     output::println!("{}", result);
     if args.copy {
         util::clipboard::copy(&result)?;
