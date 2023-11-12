@@ -182,20 +182,22 @@ pub mod envinfo {
 
 pub mod clipboard {
 
+    use std::{io::Write, process::Command};
+
     use crate::error::Error;
-    use clipboard::ClipboardContext;
-    use clipboard::ClipboardProvider;
 
     pub fn copy(text: &String) -> Result<(), Error> {
-        // error handling is under conducting
-        let mut ctx: ClipboardContext = match ClipboardProvider::new() {
-            Ok(c) => c,
-            Err(e) => return Err(Error::CopyToClipboardError(e.to_string())),
-        };
-        let _ = match ctx.set_contents(text.to_owned()) {
-            Ok(_) => (),
-            Err(e) => return Err(Error::CopyToClipboardError(e.to_string())),
-        };
+        Command::new("xclip")
+            .args(&["-selection", "clipboard"])
+            .arg("-i")
+            .arg("-selection")
+            .arg("clipboard")
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .expect("Failed to execute command")
+            .stdin
+            .expect("Failed to open stdin")
+            .write_all(text.as_bytes())?;
         Ok(())
     }
 }
