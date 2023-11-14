@@ -1,11 +1,11 @@
 use std::io::{self, Read, Write};
 
+use crate::output::{error_prefix, log_prefix};
 use crate::util;
 
 use super::error::Error;
 use clap::error::ErrorKind as ClapErrorKind;
 use clap::{Parser, Subcommand};
-use rskai::console::output;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -35,7 +35,7 @@ struct RefArgs {
     copy: bool,
 }
 
-pub fn vars(argument: String) -> rskai::types::IsError {
+pub fn vars(argument: String) -> crate::shell::types::IsError {
     let mut args_iter = vec![""];
     args_iter.extend(&argument.split_whitespace().collect::<Vec<&str>>());
     let args = match VarsArgs::try_parse_from(&args_iter) {
@@ -48,11 +48,11 @@ pub fn vars(argument: String) -> rskai::types::IsError {
                 || kind == ClapErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
                 || kind == ClapErrorKind::DisplayVersion
             {
-                output::print!("{}", e.to_string());
+                println!("{}", e.to_string());
                 return false;
             }
-            output::errorln!("failed to parse arguments");
-            output::errorln!("{}", e.to_string());
+            println!("{} failed to parse arguments", error_prefix());
+            println!("{} {}", error_prefix(), e.to_string());
             return true;
         }
     };
@@ -60,16 +60,16 @@ pub fn vars(argument: String) -> rskai::types::IsError {
         SubCommands::M(args) => match modify(args) {
             Ok(_) => return false,
             Err(e) => {
-                output::errorln!("error occurred during modifying vars.");
-                output::errorln!("{}", e.to_string());
+                println!("{} error occurred during modifying vars.", error_prefix());
+                println!("{} {}", error_prefix(), e.to_string());
                 return true;
             }
         },
         SubCommands::R(args) => match refer(args) {
             Ok(_) => return false,
             Err(e) => {
-                output::errorln!("error occurred during refering vars.");
-                output::errorln!("{}", e.to_string());
+                println!("{} error occurred during refering vars.", error_prefix());
+                println!("{} {}", error_prefix(), e.to_string());
                 return true;
             }
         },
@@ -90,7 +90,7 @@ fn refer(args: &RefArgs) -> Result<(), Error> {
         Ok(r) => r,
         Err(e) => match e {
             rjql::error::Error::NotFound => {
-                output::println!("not found: {}", e.to_string());
+                println!("{} not found: {}", error_prefix(), e.to_string());
                 return Ok(());
             }
             _ => return Err(Error::RjqlERror(e)),
@@ -99,7 +99,7 @@ fn refer(args: &RefArgs) -> Result<(), Error> {
     println!("{}", result);
     if args.copy {
         util::clipboard::copy(&result)?;
-        output::println!("above value is copied to your clipboard!");
+        println!("{} above value is copied to your clipboard!", log_prefix());
     }
     Ok(())
 }
@@ -116,13 +116,13 @@ fn modify(args: &ModArgs) -> Result<(), Error> {
     let mut j = rjql::json::Json::new(&json_str);
 
     if args.show {
-        output::println!("previous");
-        output::println!("{}", j.data);
+        println!("{} previous:", log_prefix());
+        println!("{} {}", log_prefix(), j.data);
     }
     j.modify(dest, value)?;
     if args.show {
-        output::println!("now");
-        output::println!("{}", j.data);
+        println!("{} current:", log_prefix());
+        println!("{} {}", log_prefix(), j.data);
     }
 
     let vars_file_w = util::envinfo::vars_file_write()?;

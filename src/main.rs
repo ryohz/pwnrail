@@ -1,13 +1,15 @@
 mod console;
 mod error;
+mod output;
+mod shell;
 mod util;
 
 // use std::{fs, io, path::PathBuf};
 
+use crate::output::error_prefix;
 use std::env;
 
 use clap::{Args, Parser, Subcommand};
-use rskai::console::output;
 
 // console
 // |- init initialize env. create .<projectname> directory.
@@ -45,7 +47,11 @@ async fn main() {
     match util::envinfo::ginit() {
         Ok(_) => (),
         Err(e) => {
-            output::errorln!("failed to init application: {}", e.to_string());
+            println!(
+                "{} failed to init application: {}",
+                error_prefix(),
+                e.to_string()
+            );
         }
     }
 
@@ -56,7 +62,7 @@ async fn main() {
         SubCommands::Run(args) => {
             let commands = crate::console::console::commands();
             if args.command.len() == 0 {
-                output::errorln!("no command is given.");
+                println!("{} no command is given.", error_prefix());
                 return;
             }
             let command_name = args.command.get(0).unwrap();

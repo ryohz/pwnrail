@@ -12,8 +12,6 @@ pub enum Error {
     BeforeInitEnv,
     #[error("home directory is not found")]
     NoHomeDir,
-    #[error("rjql error. `{0}`")]
-    RjqlERror(#[from] rjql::error::Error),
     #[error("falied to copy the text to clipboard: `{0}`")]
     CopyToClipboardError(String),
 }
