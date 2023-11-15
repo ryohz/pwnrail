@@ -9,10 +9,10 @@ pub fn commands() -> Vec<crate::shell::command::Command> {
     ]
 }
 
-fn refer(args: String) -> bool {
+fn refer(args: String, app_conf: &crate::config::AppConfig) -> bool {
     false
 }
 
-fn modify(args: String) -> bool {
+fn modify(args: String, app_conf: &crate::config::AppConfig) -> bool {
     false
 }

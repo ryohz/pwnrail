@@ -4,21 +4,21 @@ use std::path::PathBuf;
 // vr -r-> vars
 // vm -m-> vars
 
-pub struct Prompt {
+pub struct Shell<'a> {
     pub commands: Vec<super::command::Command>,
-    pub prompt_prefix: String,
+    pub prompt: String,
     pub prev_state: bool,
-    pub history_path: PathBuf,
+    pub app_conf: &'a crate::config::AppConfig,
 }
 
-impl Prompt {
+impl<'a> Shell<'a> {
     pub fn new(
         commands_: Option<Vec<super::command::Command>>,
-        prompt_prefix_: Option<&str>,
-        history_path: PathBuf,
+        prompt_: Option<&str>,
+        app_conf: &'a crate::config::AppConfig,
     ) -> Self {
         let mut commands = super::command::builtins();
-        let mut prompt_prefix = "rshell> ".to_string();
+        let mut prompt = "rshell> ".to_string();
         let prev_state = false;
 
         if let Some(commands_) = commands_ {
@@ -26,24 +26,24 @@ impl Prompt {
                 commands.push(cmd);
             }
         }
-        if prompt_prefix_.is_some() {
-            prompt_prefix = prompt_prefix_.unwrap().to_string();
+        if prompt_.is_some() {
+            prompt = prompt_.unwrap().to_string();
         }
 
         Self {
             commands,
-            prompt_prefix,
+            prompt,
             prev_state,
-            history_path,
+            app_conf,
         }
     }
     // entrypoint of interactive shell
     // this function accept user input and give the arguments to vary functions
     pub async fn start(&mut self) {
         let mut rl = rustyline::DefaultEditor::new().unwrap();
-        let _ = rl.load_history(&self.history_path);
+        let _ = rl.load_history(&self.app_conf.shell_hist_path);
         loop {
-            let readline = rl.readline(&self.prompt_prefix);
+            let readline = rl.readline(&self.prompt);
             let mut input = String::new();
 
             match readline {
@@ -95,7 +95,7 @@ impl Prompt {
                 continue;
             }
         }
-        let _ = rl.save_history(&self.history_path);
+        let _ = rl.save_history(&self.app_conf.shell_hist_path);
     }
 
     fn execute_command(&self, name: &String, args: Option<&String>) -> super::types::IsError {
@@ -104,9 +104,9 @@ impl Prompt {
             Some(lct) => {
                 let func = &self.commands[lct].func;
                 if args.is_some() {
-                    func(args.unwrap().to_string())
+                    func(args.unwrap().to_string(), self.app_conf)
                 } else {
-                    func("".to_string())
+                    func("".to_string(), self.app_conf)
                 }
             }
             None => {

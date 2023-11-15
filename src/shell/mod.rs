@@ -1,3 +1,3 @@
 pub mod command;
-pub mod prompt;
+pub mod shell;
 pub mod types;
