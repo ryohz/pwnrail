@@ -1,3 +1,4 @@
+use command::command::start_shell;
 use error::AppInitError;
 use output::error_prefix;
 
@@ -10,11 +11,13 @@ mod shell;
 #[tokio::main]
 async fn main() {
     // 初期設定
-    let app_config = match config::AppConfig::new() {
+    let app_conf = match config::AppConfig::new() {
         Ok(conf) => conf,
         Err(e) => {
             println!("{} {}", error_prefix(), e.to_string());
             return;
         }
     };
+
+    start_shell(app_conf).await;
 }

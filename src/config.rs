@@ -102,6 +102,12 @@ fn app_init(
         Ok(c) => c,
         Err(e) => return Err(AppInitError::DynConfInitError(e.to_string())),
     };
+
+    let _ = match init_shell_hist(shell_hist_path) {
+        Ok(_) => (),
+        Err(e) => return Err(AppInitError::ShellHistInitError(e.to_string())),
+    };
+
     Ok(dyn_conf)
 }
 //
