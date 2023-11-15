@@ -9,9 +9,16 @@ use serde::{Deserialize, Serialize};
 
 const APP_CONFIG_DIR_NAME: &str = ".guivre";
 
-pub struct STATIC_RUNTIME_CONF {
-    app_conf_dir: String,
-    dyn_conf_dir: String,
+pub struct AppConfig {
+    app_conf_dir_path: PathBuf,
+}
+
+impl AppConfig {
+    pub fn new() -> Self {
+        // Self {
+            
+        // }
+    }
 }
 
 // アプリを管理するためのファイル群を最初に生成するための関数
