@@ -3,18 +3,21 @@ use std::io;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum Error {
-    #[error("io error: `{0}`")]
-    IoError(#[from] io::Error),
-    #[error("`{0}` already exists.")]
-    AlreadyExists(String),
-    #[error("before initialization of this environment.")]
-    BeforeInitEnv,
-    #[error("home directory is not found")]
-    NoHomeDir,
-    #[error("falied to copy the text to clipboard: `{0}`")]
-    CopyToClipboardError(String),
+pub enum AppInitError {
+    #[error("Your home directory is not found")]
+    HomeNotFound,
+    #[error("Io Error: `{0}`")]
+    IoError(String),
+    #[error("initialization is already done")]
+    InitAlreadyDone,
+    #[error("failed to init dynamic config: `{0}`")]
+    DynConfInitError(String),
 }
 
 #[derive(Error, Debug)]
-pub enum VarsModError {}
+pub enum DynConfInitError {
+    #[error("Io Error: `{0}`")]
+    IoError(String),
+    #[error("failed to parse config to toml: `{0}`")]
+    TomlError(String),
+}

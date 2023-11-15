@@ -1,82 +1,36 @@
-mod console;
+use error::AppInitError;
+use output::error_prefix;
+
+mod command;
+mod config;
 mod error;
 mod output;
 mod shell;
-mod util;
-
-// use std::{fs, io, path::PathBuf};
-
-use crate::output::error_prefix;
-use std::env;
-
-use clap::{Args, Parser, Subcommand};
-
-// console
-// |- init initialize env. create .<projectname> directory.
-// |       if it already exists, console ask user whether he wants to clean current environment.
-// |       i.e. remove .<projectname> or clean command.
-// |- clean remove env directory i.e .<projectname>
-// |-
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    subcommand: SubCommands,
-}
-
-#[derive(Args, Debug)]
-struct ConsoleArgs {}
-
-#[derive(Args, Debug)]
-struct RunArgs {
-    // #[arg(num_args(0..))]
-    // direct: Option<String>,
-    command: Vec<String>,
-}
-
-#[derive(Subcommand, Debug)]
-enum SubCommands {
-    Console(ConsoleArgs),
-    Run(RunArgs),
-}
 
 #[tokio::main]
 async fn main() {
-    let cli = Cli::parse();
-
-    match util::envinfo::ginit() {
-        Ok(_) => (),
+    // 初期設定
+    let is_initialized = match config::is_app_initialized() {
+        Ok(b) => b,
         Err(e) => {
             println!(
-                "{} failed to init application: {}",
+                "{} failed to get if app has been initialized: {}",
                 error_prefix(),
                 e.to_string()
             );
+            return;
         }
-    }
-
-    match cli.subcommand {
-        SubCommands::Console(_args) => {
-            console::console::start().await;
-        }
-        SubCommands::Run(args) => {
-            let commands = crate::console::console::commands();
-            if args.command.len() == 0 {
-                println!("{} no command is given.", error_prefix());
-                return;
-            }
-            let command_name = args.command.get(0).unwrap();
-            let command_args = match args.command.get(1..) {
-                Some(a) => a.join(" "),
-                None => "".to_string(),
-            };
-            for command in commands {
-                if command.name == command_name.to_owned() {
-                    let func = command.func;
-                    func(command_args);
+    };
+    if is_initialized {
+        let _ = match config::app_init() {
+            Ok(_) => (),
+            Err(e) => match e {
+                AppInitError::InitAlreadyDone => (),
+                _ => {
+                    println!("{} failed to init app: {}", error_prefix(), e.to_string());
                     return;
                 }
-            }
-        }
+            },
+        };
     }
 }
