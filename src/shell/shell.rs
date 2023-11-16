@@ -50,11 +50,20 @@ impl<'a> Shell<'a> {
         let mut rl = rustyline::DefaultEditor::new().unwrap();
         let _ = rl.load_history(&self.app_conf.shell_hist_path);
         loop {
-            let readline = if !self.prev_state {
-                rl.readline(&self.prompt)
+            let ws_name = if self.app_conf.dyn_conf.current_workspace.is_empty() {
+                "".to_string()
             } else {
-                rl.readline(&self.err_prompt)
+                let path = &self.app_conf.dyn_conf.current_workspace;
+                let path_iter = path.split("/").collect::<Vec<&str>>();
+                let name = path_iter.get(path_iter.len() - 1).unwrap();
+                format!("|{}| ", name)
             };
+            let prompt = if !self.prev_state {
+                format!("{}{} ", ws_name, self.prompt)
+            } else {
+                format!("{}{} ", ws_name, self.err_prompt)
+            };
+            let readline = rl.readline(&prompt);
             let mut input = String::new();
 
             match readline {

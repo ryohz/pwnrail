@@ -29,6 +29,7 @@ fn init(_args: String, app_conf: &mut crate::config::AppConfig) -> bool {
         Err(e) => {
             println!("{} failed to init current directory", error_prefix());
             crate::error::print_error(crate::error::Error::GetCurrentDirectory(e));
+            println!();
             return true;
         }
     };
@@ -38,6 +39,7 @@ fn init(_args: String, app_conf: &mut crate::config::AppConfig) -> bool {
         Err(e) => {
             println!("{} failed to init current directory", error_prefix());
             crate::error::print_error(crate::error::Error::UpdateDynConfError(e));
+            println!();
             return true;
         }
     };

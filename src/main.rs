@@ -15,6 +15,7 @@ async fn main() {
         Ok(conf) => conf,
         Err(e) => {
             crate::error::print_error(crate::error::Error::AppConfigError(e));
+            println!();
             return;
         }
     };
