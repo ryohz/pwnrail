@@ -11,13 +11,13 @@ mod shell;
 #[tokio::main]
 async fn main() {
     // 初期設定
-    let app_conf = match config::AppConfig::new() {
+    let mut app_conf = match config::AppConfig::new() {
         Ok(conf) => conf,
         Err(e) => {
-            println!("{} {}", error_prefix(), e.to_string());
+            crate::error::print_error(crate::error::Error::AppConfigError(e));
             return;
         }
     };
 
-    start_shell(app_conf).await;
+    start_shell(&mut app_conf).await;
 }

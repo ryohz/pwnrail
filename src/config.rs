@@ -4,8 +4,12 @@ use std::{
     path::PathBuf,
 };
 
-use crate::error::{
-    AppConfigError, AppInitError, DynConfInitError, ReadDynConfError, ShellHistInitError,
+use crate::{
+    error::{
+        AppConfigError, AppInitError, DynConfInitError, ReadDynConfError, ShellHistInitError,
+        UpdateDynConfError,
+    },
+    output::error_prefix,
 };
 use serde::{Deserialize, Serialize};
 
@@ -49,9 +53,9 @@ impl AppConfig {
             Err(e) => match e {
                 AppInitError::InitAlreadyDone => match read_dyn_conf(&dyn_conf_path) {
                     Ok(conf) => conf,
-                    Err(e) => return Err(AppConfigError::ReadDynConfError(e.to_string())),
+                    Err(e) => return Err(AppConfigError::ReadDynConfError(e)),
                 },
-                _ => return Err(AppConfigError::AppInitError(e.to_string())),
+                _ => return Err(AppConfigError::AppInitError(e)),
             },
         };
 
@@ -61,6 +65,25 @@ impl AppConfig {
             shell_hist_path,
             dyn_conf,
         })
+    }
+
+    pub fn update_dyn_conf(&self) -> Result<(), UpdateDynConfError> {
+        let toml_ = match toml::to_string(&self.dyn_conf) {
+            Ok(t) => t,
+            Err(e) => {
+                return Err(UpdateDynConfError::ParseError(e));
+            }
+        };
+        let file = match fs::File::create(&self.dyn_conf_path) {
+            Ok(f) => f,
+            Err(e) => return Err(UpdateDynConfError::OpenError(e)),
+        };
+        let mut writer = io::BufWriter::new(file);
+        let _ = match writer.write_all(toml_.as_bytes()) {
+            Ok(_) => (),
+            Err(e) => return Err(UpdateDynConfError::WriteError(e)),
+        };
+        Ok(())
     }
 }
 
@@ -72,40 +95,30 @@ fn app_init(
     dyn_conf_path: &PathBuf,
     shell_hist_path: &PathBuf,
 ) -> Result<DynamicConfig, AppInitError> {
+    // app confディレクトリの存在確認
     if match is_entry_exist(app_conf_path) {
         Ok(b) => b,
-        Err(e) => {
-            return Err(AppInitError::IoError(format!(
-                "failed to get if {} exists: {}",
-                app_conf_path.to_str().unwrap(),
-                e.to_string()
-            )))
-        }
+        Err(e) => return Err(AppInitError::CheckAppConfPresenceError(e)),
     } {
         return Err(AppInitError::InitAlreadyDone);
     }
 
-    // 存在していないときは作成する
+    // app confディレクトリの作成
     let _ = match fs::create_dir_all(app_conf_path) {
         Ok(_) => (),
-        Err(e) => {
-            return Err(AppInitError::IoError(format!(
-                "falied to create {}: {}",
-                app_conf_path.to_str().unwrap(),
-                e.to_string(),
-            )))
-        }
+        Err(e) => return Err(AppInitError::AppConfDirCreateError(e)),
     };
 
-    // dynamic_config.tomlの設定
+    // dynamic configの初期化
     let dyn_conf = match init_dyn_conf(dyn_conf_path) {
         Ok(c) => c,
-        Err(e) => return Err(AppInitError::DynConfInitError(e.to_string())),
+        Err(e) => return Err(AppInitError::DynConfInitError(e)),
     };
 
+    // shell historyの初期化
     let _ = match init_shell_hist(shell_hist_path) {
         Ok(_) => (),
-        Err(e) => return Err(AppInitError::ShellHistInitError(e.to_string())),
+        Err(e) => return Err(AppInitError::ShellHistInitError(e)),
     };
 
     Ok(dyn_conf)
@@ -115,64 +128,48 @@ fn app_init(
 // app_init関数から呼び出される
 // やることはdynamic_cnfig.tomlの作成とそのファイルへの初期設定の書き込み
 fn init_dyn_conf(dyn_conf_path: &PathBuf) -> Result<DynamicConfig, DynConfInitError> {
-    // ~/.guivre/dynamic_config.tomlの作成
+    // dynamic configファイルの作成
     let path = dyn_conf_path;
     let file = match fs::File::create(&path) {
         Ok(f) => f,
-        Err(e) => {
-            return Err(DynConfInitError::IoError(format!(
-                "failed to create {}: {}",
-                path.to_str().unwrap(),
-                e.to_string()
-            )))
-        }
+        Err(e) => return Err(DynConfInitError::CreateError(e)),
     };
     // 初期のdynamic_config.tomlの書き込み
     //
     // current_workspaceには最初は何も指定しない
-    // なにか現在の作業ディレクトリ(ユーザーが思っているだけ)に対してのコマンドが来ても、
-    // 最初に現在の作業ディレクトリがどこなのかを指定させるようにする
     let conf = DynamicConfig {
         current_workspace: "".to_string(),
     };
     // DynamicConfigをTomlファイルに変換する
     let toml_ = match toml::to_string(&conf) {
         Ok(s) => s,
-        Err(e) => return Err(DynConfInitError::TomlError(e.to_string())),
+        Err(e) => return Err(DynConfInitError::ParseError(e)),
     };
     // dybamic_config.tomlに設定を書き込む
     let mut writer = io::BufWriter::new(file);
     let _ = match writer.write_all(toml_.as_bytes()) {
         Ok(_) => (),
-        Err(e) => {
-            return Err(DynConfInitError::IoError(format!(
-                "failed to write config to {}: {}",
-                path.to_str().unwrap(),
-                e.to_string()
-            )))
-        }
+        Err(e) => return Err(DynConfInitError::WriteError(e)),
     };
 
     Ok(conf)
 }
 // dynamic configを読み込む関数
 fn read_dyn_conf(dyn_conf_path: &PathBuf) -> Result<DynamicConfig, ReadDynConfError> {
+    // dynamic configファイルを開く
     let file = match fs::File::open(dyn_conf_path) {
         Ok(f) => f,
-        Err(e) => {
-            return Err(ReadDynConfError::OpenError(format!(
-                "failed to open {}: {}",
-                dyn_conf_path.to_str().unwrap(),
-                e.to_string()
-            )))
-        }
+        Err(e) => return Err(ReadDynConfError::OpenError(e)),
     };
     let mut reader = io::BufReader::new(&file);
     let mut toml = String::new();
-    reader.read_to_string(&mut toml);
+    let _ = match reader.read_to_string(&mut toml) {
+        Ok(_) => (),
+        Err(e) => return Err(ReadDynConfError::ReadError(e)),
+    };
     let conf: DynamicConfig = match toml::from_str(&toml) {
         Ok(c) => c,
-        Err(e) => return Err(ReadDynConfError::ParseError(e.to_string())),
+        Err(e) => return Err(ReadDynConfError::ParseError(e)),
     };
     Ok(conf)
 }
@@ -185,13 +182,7 @@ fn init_shell_hist(shell_hist_path: &PathBuf) -> Result<(), ShellHistInitError> 
     let path = shell_hist_path;
     let _ = match fs::File::create(&path) {
         Ok(_) => (),
-        Err(e) => {
-            return Err(ShellHistInitError::IoError(format!(
-                "failed to create {}: {}",
-                path.to_str().unwrap(),
-                e.to_string()
-            )))
-        }
+        Err(e) => return Err(ShellHistInitError::CreateError(e)),
     };
     Ok(())
 }

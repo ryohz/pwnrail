@@ -7,18 +7,21 @@ use std::path::PathBuf;
 pub struct Shell<'a> {
     pub commands: Vec<super::command::Command>,
     pub prompt: String,
+    err_prompt: String,
     pub prev_state: bool,
-    pub app_conf: &'a crate::config::AppConfig,
+    pub app_conf: &'a mut crate::config::AppConfig,
 }
 
 impl<'a> Shell<'a> {
     pub fn new(
         commands_: Option<Vec<super::command::Command>>,
-        prompt_: Option<&str>,
-        app_conf: &'a crate::config::AppConfig,
+        prompt_: Option<String>,
+        err_prompt_: Option<String>,
+        app_conf: &'a mut crate::config::AppConfig,
     ) -> Self {
         let mut commands = super::command::builtins();
-        let mut prompt = "rshell> ".to_string();
+        let mut prompt = "shell> ".to_string();
+        let mut err_prompt = "shell>".to_string();
         let prev_state = false;
 
         if let Some(commands_) = commands_ {
@@ -26,13 +29,17 @@ impl<'a> Shell<'a> {
                 commands.push(cmd);
             }
         }
-        if prompt_.is_some() {
-            prompt = prompt_.unwrap().to_string();
+        if let Some(p) = prompt_ {
+            prompt = p;
+        }
+        if let Some(p) = err_prompt_ {
+            err_prompt = p;
         }
 
         Self {
             commands,
             prompt,
+            err_prompt,
             prev_state,
             app_conf,
         }
@@ -43,7 +50,11 @@ impl<'a> Shell<'a> {
         let mut rl = rustyline::DefaultEditor::new().unwrap();
         let _ = rl.load_history(&self.app_conf.shell_hist_path);
         loop {
-            let readline = rl.readline(&self.prompt);
+            let readline = if !self.prev_state {
+                rl.readline(&self.prompt)
+            } else {
+                rl.readline(&self.err_prompt)
+            };
             let mut input = String::new();
 
             match readline {
@@ -98,7 +109,7 @@ impl<'a> Shell<'a> {
         let _ = rl.save_history(&self.app_conf.shell_hist_path);
     }
 
-    fn execute_command(&self, name: &String, args: Option<&String>) -> super::types::IsError {
+    fn execute_command(&mut self, name: &String, args: Option<&String>) -> super::types::IsError {
         let cmd_lct = self.search_command(name);
         match cmd_lct {
             Some(lct) => {

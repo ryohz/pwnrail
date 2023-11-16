@@ -1,6 +1,8 @@
 use std::io::{self, Read, Write};
 
-use crate::output::{error_prefix, green, log_prefix};
+use clap::Parser;
+
+use crate::output::{error_prefix, green, log_prefix, blue};
 
 pub fn commands() -> Vec<crate::shell::command::Command> {
     vec![
@@ -11,9 +13,9 @@ pub fn commands() -> Vec<crate::shell::command::Command> {
     ]
 }
 
-fn help1(args: String, app_conf: &crate::config::AppConfig) -> bool {
-    println!("{}ars", green("V"));
-    println!("  refer or modify variables like an ip address.");
+fn help1(args: String, app_conf: &mut crate::config::AppConfig) -> bool {
+    println!("{}ars", blue("V"));
+    println!("\trefer or modify variables like an ip address.");
     println!("Commands:");
     println!("\tv\tprint this screen.");
     println!("\tvh\tprint this screen.");
@@ -31,10 +33,29 @@ fn help2(args: String, app_conf: &crate::config::AppConfig) -> bool {
     false
 }
 
-fn refer(args: String, app_conf: &crate::config::AppConfig) -> bool {
+// vr (refer)では独自のjsonクエリで場所を指定してその場所にある値をプリントする。
+// copyフラグを追加することでその値を自動でクリップボードにコピーできる
+#[derive(Parser, Debug)]
+struct RefArgs {
+    path: String,
+    #[arg(short)]
+    copy: bool,
+}
+
+fn refer(args_: String, app_conf: &mut crate::config::AppConfig) -> bool {
+    let mut args_iter = vec![""];
+    args_iter.extend(&args_.split_whitespace().collect::<Vec<&str>>());
+    let args = match RefArgs::try_parse_from(&args_iter) {
+        Ok(a) => a,
+        Err(e) => {
+            println!("{}", e.to_string());
+            return true;
+        }
+    };
+
     false
 }
 
-fn modify(args: String, app_conf: &crate::config::AppConfig) -> bool {
+fn modify(args: String, app_conf: &mut crate::config::AppConfig) -> bool {
     false
 }
