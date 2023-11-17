@@ -5,12 +5,12 @@ use std::{
 };
 
 use crate::{
+    command::vars,
     error::{
         AppConfigError, AppInitError, CreateNewWorkspaceError, DynConfInitError,
         InitCurrentDirAsWorkspaceError, ReadDynConfError, ShellHistInitError,
         UpdateDynConfFileError, UseCurrentDirAsWorkspaceError,
     },
-    output::error_prefix,
 };
 use serde::{Deserialize, Serialize};
 
@@ -141,17 +141,24 @@ impl AppConfig {
     }
 }
 
+impl DynamicConfig {
+    pub fn to_workspace(&self) -> Workspace {
+        let path = PathBuf::from(&self.current_workspace);
+        Workspace::assemble_struct(&path)
+    }
+}
+
 // .prail      管理ディレクトリという呼称にする
 //  | vars.json     ipアドレスなどの変数を気軽に収納するためのファイル  varsファイルという呼称にする
-struct Workspace {
+pub struct Workspace {
     pub mgr_path: PathBuf,
     pub vars_path: PathBuf,
 }
 
 impl Workspace {
-    fn assemble_struct(path: &PathBuf) -> Self {
+    pub fn assemble_struct(path: &PathBuf) -> Self {
         let mgr_path = path.join(WORKSPACE_DIR_NAME);
-        let vars_path = path.join(VARS_FILE_NAME);
+        let vars_path = mgr_path.join(VARS_FILE_NAME);
         Self {
             mgr_path,
             vars_path,
@@ -167,15 +174,21 @@ impl Workspace {
             // 存在したらエラーを返す
             return Err(CreateNewWorkspaceError::MgrAlreadyExists);
         }
-        // 管理ディレクトリを作成
+        // 管理ディレクトリを作成と初期値の設定
         let _ = match fs::create_dir_all(&self.mgr_path) {
             Ok(_) => (),
             Err(e) => return Err(CreateNewWorkspaceError::CreateMgrError(e)),
         };
         // varsファイルを作成
-        let _ = match fs::File::create(&self.vars_path) {
-            Ok(_) => (),
+        let vars_file = match fs::File::create(&self.vars_path) {
+            Ok(f) => f,
             Err(e) => return Err(CreateNewWorkspaceError::CreateVarsFileError(e)),
+        };
+        let mut vars_writer = io::BufWriter::new(vars_file);
+        let vars_initial_content = "{}".as_bytes();
+        let _ = match vars_writer.write_all(vars_initial_content) {
+            Ok(_) => (),
+            Err(e) => return Err(CreateNewWorkspaceError::WriteVarsFileError(e)),
         };
 
         Ok(())

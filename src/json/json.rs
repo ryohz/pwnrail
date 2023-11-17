@@ -1,8 +1,9 @@
 use std::str::FromStr;
 
+use super::error::JsonQueryError;
 use serde_json::Value;
 
-// use crate::error::Error;
+// use crate::JsonQueryError::JsonQueryError;
 
 enum RefPurpose {
     Ref,
@@ -20,7 +21,7 @@ impl Json {
         }
     }
 
-    pub fn refer(&mut self, query: &String) -> Result<String, Error> {
+    pub fn refer(&mut self, query: &String) -> Result<String, JsonQueryError> {
         let v = self.refer_(query, RefPurpose::Ref)?;
         match v {
             Value::String(v) => Ok(v.to_string()),
@@ -28,7 +29,7 @@ impl Json {
         }
     }
 
-    pub fn delete(&mut self, path: &String) -> Result<(), Error> {
+    pub fn delete(&mut self, path: &String) -> Result<(), JsonQueryError> {
         let locate_vec = path.split('.').collect::<Vec<&str>>();
 
         let last_locate = locate_vec.get(locate_vec.len() - 1).unwrap();
@@ -54,13 +55,13 @@ impl Json {
         if last_locate.contains(&"[") && last_locate.contains(&"]") {
             let token = last_locate;
             if unclosed_bracket(token) {
-                return Err(Error::UnclosedBracket);
+                return Err(JsonQueryError::UnclosedBracket);
             }
             if not_num_in_bracket(token) {
-                return Err(Error::NotNumInBracket);
+                return Err(JsonQueryError::NotNumInBracket);
             }
             if not_ends_with_bracket(token) {
-                return Err(Error::NotEndWithBracket);
+                return Err(JsonQueryError::NotEndWithBracket);
             }
             let iter = token.split('[').collect::<Vec<&str>>();
             let name = iter[0];
@@ -103,7 +104,7 @@ impl Json {
         }
     }
 
-    pub fn modify(&mut self, locate: &String, raw_value: &String) -> Result<(), Error> {
+    pub fn modify(&mut self, locate: &String, raw_value: &String) -> Result<(), JsonQueryError> {
         let value = to_value(raw_value);
         let dest = self.refer_(locate, RefPurpose::Mod)?;
         *dest = value;
@@ -111,33 +112,37 @@ impl Json {
     }
 
     // function return a mutable reference of element of specified path
-    // if the purpose of the reference is reading, return NotFound error when no element that specified path is pointing exists
+    // if the purpose of the reference is reading, return NotFound JsonQueryError when no element that specified path is pointing exists
     // if if's modifying, making new element that is initialized by null, update data, and return imutable reference of new null element
     // 指定されたパスの可変参照を返す関数
     // 参照の目的が単に閲覧である場合は、存在しない要素を参照しようとしたときにNotFoundを返す
     // 参照の目的が改変だった場合は、存在しない要素をnullで初期化してdataに代入して、その新しくできたnullの要素の可変参照を返す
-    fn refer_(&mut self, path: &String, ref_purpose: RefPurpose) -> Result<&mut Value, Error> {
+    fn refer_(
+        &mut self,
+        path: &String,
+        ref_purpose: RefPurpose,
+    ) -> Result<&mut Value, JsonQueryError> {
         let mut current = &mut self.data;
         if path.to_string() == ".".to_string() {
             return Ok(current);
         }
         if path.is_empty() {
-            return Err(Error::EmptyQuery);
+            return Err(JsonQueryError::EmptyQuery);
         }
         if start_or_end_by_dot(&path) {
-            return Err(Error::StartOrEndByDot);
+            return Err(JsonQueryError::StartOrEndByDot);
         }
         let query = path.split('.').collect::<Vec<&str>>();
         for token in query {
             if is_contain_list_ref(token) {
                 if unclosed_bracket(&token) {
-                    return Err(Error::UnclosedBracket);
+                    return Err(JsonQueryError::UnclosedBracket);
                 }
                 if not_num_in_bracket(&token) {
-                    return Err(Error::NotNumInBracket);
+                    return Err(JsonQueryError::NotNumInBracket);
                 }
                 if not_ends_with_bracket(&token) {
-                    return Err(Error::NotEndWithBracket);
+                    return Err(JsonQueryError::NotEndWithBracket);
                 }
                 let iter = token.split('[').collect::<Vec<&str>>();
                 let name = iter[0];
@@ -148,7 +153,7 @@ impl Json {
                 if current.get(name).is_none() {
                     match ref_purpose {
                         RefPurpose::Ref => {
-                            return Err(Error::NotFound);
+                            return Err(JsonQueryError::NotFound);
                         }
                         RefPurpose::Mod => {
                             current[name] = Value::Null;
@@ -161,7 +166,7 @@ impl Json {
                 if current.get(token).is_none() {
                     match ref_purpose {
                         RefPurpose::Ref => {
-                            return Err(Error::NotFound);
+                            return Err(JsonQueryError::NotFound);
                         }
                         RefPurpose::Mod => {
                             current[token] = Value::Null;

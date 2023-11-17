@@ -1,5 +1,3 @@
-use std::env;
-
 use crate::{
     config,
     error::{self, Error},
@@ -12,8 +10,10 @@ pub fn commands() -> Vec<shell::command::Command> {
         crate::shell::command::Command::new("use", Box::new(use_)),
         crate::shell::command::Command::new("init", Box::new(init)),
     ];
-    let vars_cmmands = super::vars::commands();
-    commands.extend(vars_cmmands);
+    let vars_commands = super::vars::commands();
+    let show_commands = super::show::commands();
+    commands.extend(vars_commands);
+    commands.extend(show_commands);
     commands
 }
 
@@ -29,6 +29,7 @@ pub async fn start_shell(app_conf: &mut config::AppConfig) {
 
 // カレントディレクトリをワークスペースとして初期化するコマンド関数
 fn init(_args: String, app_conf: &mut crate::config::AppConfig) -> bool {
+    // AppConfigに用意された専用の関数を使う
     let _ = match app_conf.init_current_directory_as_workspace() {
         Ok(_) => (),
         Err(e) => {
@@ -46,6 +47,7 @@ fn init(_args: String, app_conf: &mut crate::config::AppConfig) -> bool {
 
 // ワークスペースの場所をカレントディレクトリに変更するコマンド関数
 fn use_(_args: String, app_conf: &mut crate::config::AppConfig) -> bool {
+    // AppConfigに用意された専用の関数を使う
     let _ = match app_conf.use_current_dir_as_workspace() {
         Ok(_) => (),
         Err(e) => {
