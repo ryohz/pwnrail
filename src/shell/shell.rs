@@ -1,9 +1,3 @@
-use std::path::PathBuf;
-
-// v -> vars
-// vr -r-> vars
-// vm -m-> vars
-
 pub struct Shell<'a> {
     pub commands: Vec<super::command::Command>,
     pub prompt: String,
@@ -56,7 +50,8 @@ impl<'a> Shell<'a> {
                 let path = &self.app_conf.dyn_conf.current_workspace;
                 let path_iter = path.split("/").collect::<Vec<&str>>();
                 let name = path_iter.get(path_iter.len() - 1).unwrap();
-                format!("|{}| ", name)
+                // format!("({})", gray(name))
+                "".to_string()
             };
             let prompt = if !self.prev_state {
                 format!("{}{} ", ws_name, self.prompt)

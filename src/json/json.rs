@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use serde_json::Value;
 
-use crate::error::Error;
+// use crate::error::Error;
 
 enum RefPurpose {
     Ref,

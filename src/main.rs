@@ -1,10 +1,9 @@
 use command::command::start_shell;
-use error::AppInitError;
-use output::error_prefix;
 
 mod command;
 mod config;
 mod error;
+mod json;
 mod output;
 mod shell;
 

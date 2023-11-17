@@ -6,16 +6,20 @@ use std::{
 
 use crate::{
     error::{
-        AppConfigError, AppInitError, DynConfInitError, ReadDynConfError, ShellHistInitError,
-        UpdateDynConfError,
+        AppConfigError, AppInitError, CreateNewWorkspaceError, DynConfInitError,
+        InitCurrentDirAsWorkspaceError, ReadDynConfError, ShellHistInitError,
+        UpdateDynConfFileError, UseCurrentDirAsWorkspaceError,
     },
     output::error_prefix,
 };
 use serde::{Deserialize, Serialize};
 
-const APP_CONFIG_DIR_NAME: &str = ".guivre";
+const APP_CONFIG_DIR_NAME: &str = ".pwnrail";
 const DYNAMIC_CONFIG_FILE_NAME: &str = "dynamic_config.toml";
 const SHELL_HISTORY_FILE_NAME: &str = "shell_history";
+
+const WORKSPACE_DIR_NAME: &str = ".prail";
+const VARS_FILE_NAME: &str = "vars.json";
 
 pub struct AppConfig {
     pub app_conf_path: PathBuf,
@@ -30,7 +34,7 @@ pub struct DynamicConfig {
 }
 
 impl AppConfig {
-    // ~/.guivre
+    // ~/.pwnrail
     //  |   dynamic_config.toml     現在の作業ディレクトリなど、アプリケーションの実行途中に動的に変更される設定
     //  |                           初期化では初期設定が書き込まれる。アプリケーションが起動したタイミングでAppConfigに読みこまれる
     //  |                           起動時の読み込みに失敗すると、シェルは起動せずに終了する。
@@ -41,11 +45,11 @@ impl AppConfig {
             Some(dir) => dir,
             None => panic!("home directory is not found"),
         };
-        // ~/.guivre
+        // ~/.pwnrail
         let app_conf_path = home_path.join(APP_CONFIG_DIR_NAME);
-        // ~/.guivre/dynamic_config.toml
+        // ~/.pwnrail/dynamic_config.toml
         let dyn_conf_path = app_conf_path.join(DYNAMIC_CONFIG_FILE_NAME);
-        // ~/.guivre/shell_history
+        // ~/.pwnrail/shell_history
         let shell_hist_path = app_conf_path.join(SHELL_HISTORY_FILE_NAME);
 
         let dyn_conf = match app_init(&app_conf_path, &dyn_conf_path, &shell_hist_path) {
@@ -67,29 +71,120 @@ impl AppConfig {
         })
     }
 
-    pub fn update_dyn_conf(&self) -> Result<(), UpdateDynConfError> {
+    // カレントディレクトリをワークスペースとして初期化する関数
+    pub fn init_current_directory_as_workspace(
+        &mut self,
+    ) -> Result<(), InitCurrentDirAsWorkspaceError> {
+        // カレントディレクトリを取得
+        let current_dir_path = match env::current_dir() {
+            Ok(p) => p,
+            Err(e) => return Err(InitCurrentDirAsWorkspaceError::GetCurrentDirError(e)),
+        };
+        // 作成するワークスペースディレクトリの構造を取得
+        let workspace_struct = Workspace::assemble_struct(&current_dir_path);
+        // ワークスペース管理ディレクトリ・ファイル群を作成
+        let _ = match workspace_struct.create() {
+            Ok(_) => (),
+            Err(e) => return Err(InitCurrentDirAsWorkspaceError::CreateNewWorkspaceError(e)),
+        };
+        // 初期化したら、自動で初期化したディレクトリをワークスペースに設定するようにする
+        let _ = match self.use_current_dir_as_workspace() {
+            Ok(_) => (),
+            Err(e) => return Err(InitCurrentDirAsWorkspaceError::UseCurrentDirAsWorkspaceError(e)),
+        };
+        Ok(())
+    }
+
+    // カレントディレクトリをワークスペースとして使うように設定する関数
+    pub fn use_current_dir_as_workspace(&mut self) -> Result<(), UseCurrentDirAsWorkspaceError> {
+        // カレントディレクトリを取得
+        let current_dir_path = match env::current_dir() {
+            Ok(p) => p,
+            Err(e) => return Err(UseCurrentDirAsWorkspaceError::GetCurrentDirError(e)),
+        };
+        // カレントディレクトリ配下に管理ディレクトリがあるかどうか確認
+        let workspace = Workspace::assemble_struct(&current_dir_path);
+        if !match is_entry_exist(&workspace.mgr_path) {
+            Ok(b) => b,
+            Err(e) => return Err(UseCurrentDirAsWorkspaceError::CheckMgrPresenceError(e)),
+        } {
+            // ない場合はエラーを返す
+            return Err(UseCurrentDirAsWorkspaceError::BeforeInitError);
+        }
+        // app configのdyanamic configの現在の作業ディレクトリを取得したカレントディレクトリに変更
+        self.dyn_conf.current_workspace = current_dir_path.to_str().unwrap().to_string();
+        // app configの設定ファイルを更新する
+        let _ = match self.update_dyn_conf_file() {
+            Ok(_) => (),
+            Err(e) => return Err(UseCurrentDirAsWorkspaceError::UpdateDynConfFileError(e)),
+        };
+        Ok(())
+    }
+
+    pub fn update_dyn_conf_file(&self) -> Result<(), UpdateDynConfFileError> {
         let toml_ = match toml::to_string(&self.dyn_conf) {
             Ok(t) => t,
             Err(e) => {
-                return Err(UpdateDynConfError::ParseError(e));
+                return Err(UpdateDynConfFileError::ParseError(e));
             }
         };
         let file = match fs::File::create(&self.dyn_conf_path) {
             Ok(f) => f,
-            Err(e) => return Err(UpdateDynConfError::OpenError(e)),
+            Err(e) => return Err(UpdateDynConfFileError::OpenError(e)),
         };
         let mut writer = io::BufWriter::new(file);
         let _ = match writer.write_all(toml_.as_bytes()) {
             Ok(_) => (),
-            Err(e) => return Err(UpdateDynConfError::WriteError(e)),
+            Err(e) => return Err(UpdateDynConfFileError::WriteError(e)),
         };
         Ok(())
     }
 }
 
+// .prail      管理ディレクトリという呼称にする
+//  | vars.json     ipアドレスなどの変数を気軽に収納するためのファイル  varsファイルという呼称にする
+struct Workspace {
+    pub mgr_path: PathBuf,
+    pub vars_path: PathBuf,
+}
+
+impl Workspace {
+    fn assemble_struct(path: &PathBuf) -> Self {
+        let mgr_path = path.join(WORKSPACE_DIR_NAME);
+        let vars_path = path.join(VARS_FILE_NAME);
+        Self {
+            mgr_path,
+            vars_path,
+        }
+    }
+
+    fn create(&self) -> Result<(), CreateNewWorkspaceError> {
+        // ワークスペースの管理ディレクトリの存在確認
+        if match is_entry_exist(&self.mgr_path) {
+            Ok(b) => b,
+            Err(e) => return Err(CreateNewWorkspaceError::CheckMgrPresenceError(e)),
+        } {
+            // 存在したらエラーを返す
+            return Err(CreateNewWorkspaceError::MgrAlreadyExists);
+        }
+        // 管理ディレクトリを作成
+        let _ = match fs::create_dir_all(&self.mgr_path) {
+            Ok(_) => (),
+            Err(e) => return Err(CreateNewWorkspaceError::CreateMgrError(e)),
+        };
+        // varsファイルを作成
+        let _ = match fs::File::create(&self.vars_path) {
+            Ok(_) => (),
+            Err(e) => return Err(CreateNewWorkspaceError::CreateVarsFileError(e)),
+        };
+
+        Ok(())
+    }
+}
+
 // アプリケーションを初期化する関数。
-// この関数では~/.guivreが存在しないときに~/.guivreを作成し、その配下に初期設定の設定ファイルたちを配置する。
-// ~/.guivreが存在するときは存在することを示すエラーを吐く
+// この関数では~/.pwnrailが存在しないときに~/.pwnrailを作成し、その配下に初期設定の設定ファイルたちを配置する。
+// ~/.pwnrailが存在するときは存在することを示すエラーを吐く
 fn app_init(
     app_conf_path: &PathBuf,
     dyn_conf_path: &PathBuf,
@@ -178,7 +273,7 @@ fn read_dyn_conf(dyn_conf_path: &PathBuf) -> Result<DynamicConfig, ReadDynConfEr
 // app_init関数から呼び出される
 // やることはshell_historyの作成
 fn init_shell_hist(shell_hist_path: &PathBuf) -> Result<(), ShellHistInitError> {
-    // ~/.guivre/shell_historyの作成
+    // ~/.pwnrail/shell_historyの作成
     let path = shell_hist_path;
     let _ = match fs::File::create(&path) {
         Ok(_) => (),

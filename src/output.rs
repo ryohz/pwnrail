@@ -17,3 +17,7 @@ pub fn green(text: &str) -> String {
 pub fn blue(text: &str) -> String {
     format!("\x1b[34m{}\x1b[0m", text)
 }
+
+pub fn gray(text: &str) -> String {
+    format!("\x1b[2;N{}\x1b[0m", text)
+}

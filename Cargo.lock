@@ -226,20 +226,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fb8d784f27acf97159b40fc4db5ecd8aa23b9ad5ef69cdd136d3bc80665f0c0"
 
 [[package]]
-name = "guivre"
-version = "0.1.0"
-dependencies = [
- "clap",
- "home",
- "rustyline",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "toml",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -411,6 +397,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "134c189feb4956b20f6f547d2cf727d4c0fe06722b20a0eec87ed445a97f92da"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "pwnrail"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "home",
+ "rustyline",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "toml",
 ]
 
 [[package]]

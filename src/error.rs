@@ -8,10 +8,10 @@ use crate::output::error_prefix;
 pub enum Error {
     #[error("error around config")]
     AppConfigError(AppConfigError),
-    #[error("failed to update dynamic config")]
-    UpdateDynConfError(UpdateDynConfError),
-    #[error("failed to get current directory")]
-    GetCurrentDirectory(io::Error),
+    #[error("failed to init current directory as a workpsace")]
+    InitCurrentDirAsWorkspaceError(InitCurrentDirAsWorkspaceError),
+    #[error("failed to use current directory as a workspace")]
+    UseCurrentDirAsWorkspaceError(UseCurrentDirAsWorkspaceError),
 }
 
 #[derive(Error, Debug)]
@@ -63,13 +63,47 @@ pub enum ShellHistInitError {
 }
 
 #[derive(Error, Debug)]
-pub enum UpdateDynConfError {
+pub enum UpdateDynConfFileError {
     #[error("failed to parse toml file as dynamic config")]
     ParseError(toml::ser::Error),
     #[error("failed to open dynamic config file")]
     OpenError(io::Error),
     #[error("failed to write new dynamic config to the file")]
     WriteError(io::Error),
+}
+
+#[derive(Error, Debug)]
+pub enum UseCurrentDirAsWorkspaceError {
+    #[error("failed to get current directory")]
+    GetCurrentDirError(io::Error),
+    #[error("failed to get whether a workspace manager exists in current directory")]
+    CheckMgrPresenceError(io::Error),
+    #[error("failed to update dynamic config")]
+    UpdateDynConfFileError(UpdateDynConfFileError),
+    #[error("the workspace manager doesn't exist in the current directory")]
+    BeforeInitError,
+}
+
+#[derive(Error, Debug)]
+pub enum InitCurrentDirAsWorkspaceError {
+    #[error("failed to get current directory")]
+    GetCurrentDirError(io::Error),
+    #[error("failed to create new workspace")]
+    CreateNewWorkspaceError(CreateNewWorkspaceError),
+    #[error("failed to use current directory as a workspace")]
+    UseCurrentDirAsWorkspaceError(UseCurrentDirAsWorkspaceError),
+}
+
+#[derive(Error, Debug)]
+pub enum CreateNewWorkspaceError {
+    #[error("failed to get whether a workspace manager already exists in current directory")]
+    CheckMgrPresenceError(io::Error),
+    #[error("a workspace manager directory already exists")]
+    MgrAlreadyExists,
+    #[error("failed to create a workspace manager directory")]
+    CreateMgrError(io::Error),
+    #[error("failed to create a vars file")]
+    CreateVarsFileError(io::Error),
 }
 
 pub fn print_error(error: Error) {
@@ -101,9 +135,7 @@ pub fn print_error(error: Error) {
                                 }
                             }
                         }
-                        AppInitError::InitAlreadyDone => {
-                            println(e.to_string());
-                        }
+                        AppInitError::InitAlreadyDone => {}
                         AppInitError::ShellHistInitError(e) => {
                             println(e.to_string());
                             match e {
@@ -130,22 +162,80 @@ pub fn print_error(error: Error) {
                 }
             }
         }
-        Error::UpdateDynConfError(e) => {
+        Error::UseCurrentDirAsWorkspaceError(e) => {
             println(e.to_string());
             match e {
-                UpdateDynConfError::OpenError(e) => {
+                UseCurrentDirAsWorkspaceError::BeforeInitError => {}
+                UseCurrentDirAsWorkspaceError::CheckMgrPresenceError(e) => {
                     println(e.to_string());
                 }
-                UpdateDynConfError::ParseError(e) => {
+                UseCurrentDirAsWorkspaceError::GetCurrentDirError(e) => {
                     println(e.to_string());
                 }
-                UpdateDynConfError::WriteError(e) => {
+                UseCurrentDirAsWorkspaceError::UpdateDynConfFileError(e) => {
                     println(e.to_string());
+                    match e {
+                        UpdateDynConfFileError::OpenError(e) => {
+                            println(e.to_string());
+                        }
+                        UpdateDynConfFileError::ParseError(e) => {
+                            println(e.to_string());
+                        }
+                        UpdateDynConfFileError::WriteError(e) => {
+                            println(e.to_string());
+                        }
+                    }
                 }
             }
         }
-        Error::GetCurrentDirectory(e) => {
+        Error::InitCurrentDirAsWorkspaceError(e) => {
             println(e.to_string());
+            match e {
+                InitCurrentDirAsWorkspaceError::CreateNewWorkspaceError(e) => {
+                    println(e.to_string());
+                    match e {
+                        CreateNewWorkspaceError::CheckMgrPresenceError(e) => {
+                            e.to_string();
+                        }
+                        CreateNewWorkspaceError::CreateMgrError(e) => {
+                            e.to_string();
+                        }
+                        CreateNewWorkspaceError::CreateVarsFileError(e) => {
+                            e.to_string();
+                        }
+                        CreateNewWorkspaceError::MgrAlreadyExists => {}
+                    }
+                }
+                InitCurrentDirAsWorkspaceError::GetCurrentDirError(e) => {
+                    println(e.to_string());
+                }
+                InitCurrentDirAsWorkspaceError::UseCurrentDirAsWorkspaceError(e) => {
+                    println(e.to_string());
+                    match e {
+                        UseCurrentDirAsWorkspaceError::BeforeInitError => {}
+                        UseCurrentDirAsWorkspaceError::CheckMgrPresenceError(e) => {
+                            println(e.to_string());
+                        }
+                        UseCurrentDirAsWorkspaceError::GetCurrentDirError(e) => {
+                            println(e.to_string());
+                        }
+                        UseCurrentDirAsWorkspaceError::UpdateDynConfFileError(e) => {
+                            println(e.to_string());
+                            match e {
+                                UpdateDynConfFileError::OpenError(e) => {
+                                    println(e.to_string());
+                                }
+                                UpdateDynConfFileError::ParseError(e) => {
+                                    println(e.to_string());
+                                }
+                                UpdateDynConfFileError::WriteError(e) => {
+                                    println(e.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     };
 }
